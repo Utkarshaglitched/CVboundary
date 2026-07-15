@@ -1,12 +1,13 @@
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   background: #000;
   color: #f8f9fa;
-}
-
-.stream-frame {
-  min-height: 420px;
-  object-fit: cover;
-  background: linear-gradient(135deg, #111, #2b2b2b);
+  margin: 0;
 }
 
 .card {
@@ -16,4 +17,205 @@ body {
 .table-dark {
   --bs-table-bg: #111;
   --bs-table-striped-bg: #1c1c1c;
+}
+
+/* ── Dashboard layout: stream fills the tab ── */
+.dashboard-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: #000;
+}
+
+.dashboard-topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1rem;
+  background: #111;
+  border-bottom: 1px solid #333;
+  z-index: 10;
+}
+
+.dashboard-topbar h1 {
+  font-size: 1.1rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.dashboard-nav {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.dashboard-nav .btn {
+  min-width: 7rem;
+}
+
+.dashboard-stats {
+  display: flex;
+  gap: 1.25rem;
+  font-size: 0.85rem;
+  color: #adb5bd;
+  flex-wrap: wrap;
+}
+
+.dashboard-stats strong {
+  color: #fff;
+}
+
+.stream-viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  padding: 0;
+  overflow: hidden;
+}
+
+.stream-viewport img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  background: #000;
+}
+
+/* ── Settings page ── */
+.settings-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: #000;
+}
+
+.settings-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  background: #111;
+  border-bottom: 1px solid #333;
+  flex-wrap: wrap;
+}
+
+.settings-toolbar h1 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.settings-side-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #444;
+  border-radius: 0.5rem;
+  background: #1b1b1b;
+}
+
+.settings-side-picker span {
+  font-size: 0.8rem;
+  color: #adb5bd;
+}
+
+.settings-side-picker .form-select {
+  min-width: 8.5rem;
+  background-color: #111;
+  color: #fff;
+  border-color: #444;
+}
+
+.settings-viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+  background: #000;
+}
+
+.settings-viewport canvas {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  display: block;
+  cursor: crosshair;
+  touch-action: none;
+  margin: auto;
+}
+
+.settings-hint {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+/* ── Logs page (scrollable) ── */
+.logs-shell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #000;
+}
+
+.logs-topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1rem;
+  background: #111;
+  border-bottom: 1px solid #333;
+}
+
+.logs-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 1rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  .dashboard-stats {
+    display: none;
+  }
+
+  .settings-hint {
+    font-size: 0.75rem;
+    text-align: center;
+    width: 90%;
+  }
 }

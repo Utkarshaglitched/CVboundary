@@ -17,6 +17,7 @@ class IntrusionLog(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     timestamp: Mapped[str] = mapped_column(String(50), nullable=False)
     image_path: Mapped[str] = mapped_column(String(255), nullable=False)
-    recognized_people: Mapped[str] = mapped_column(String(255), default="Unknown")
+    embeddings_path: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    recognized_people: Mapped[str] = mapped_column(String(255), default="Pending")
     status: Mapped[str] = mapped_column(String(50), default="INTRUSION")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

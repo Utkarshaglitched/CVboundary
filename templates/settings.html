@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perimeter Settings</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="/static/css/style.css" rel="stylesheet" />
+</head>
+<body>
+  <div class="settings-shell">
+    <header class="settings-toolbar">
+      <h1>Draw Perimeter Line</h1>
+      <div class="settings-actions">
+        <label class="settings-side-picker" for="dangerSide">
+          <span>Danger side</span>
+          <select id="dangerSide" class="form-select form-select-sm">
+            <option value="left">Left of line</option>
+            <option value="right">Right of line</option>
+          </select>
+        </label>
+        <button id="clearBtn" class="btn btn-sm btn-outline-warning" type="button">Clear</button>
+        <button id="saveBtn" class="btn btn-sm btn-success" type="button">Save Perimeter</button>
+        <a class="btn btn-sm btn-outline-light" href="/">Back to Live</a>
+      </div>
+    </header>
+    <div class="settings-viewport" id="viewport">
+      <canvas id="drawCanvas"></canvas>
+      <div class="settings-hint">Draw your boundary with mouse or touch. The selected side will be treated as the danger zone.</div>
+    </div>
+  </div>
+  <script src="/static/js/settings.js"></script>
+</body>
+</html>

@@ -6,10 +6,10 @@ import threading
 import urllib.request
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated
 
+import cv2
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -20,6 +20,7 @@ from camera import CameraManager
 from detector import IntrusionDetector
 from face_recognition import FaceRecognizer
 from models import IntrusionLog
+from perimeter import PerimeterManager
 from streamer import Streamer
 
 app = FastAPI(title="Surveillance Dashboard", version="1.0.0")
@@ -28,6 +29,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 latest_intrusion_status = {"value": 0, "updated_at": None}
+perimeter_manager = PerimeterManager(config.PERIMETER_FILE, default_x=config.BOUNDARY_PERCENTAGE)
 
 
 def _normalize_intrusion_value(payload: object) -> int:
@@ -76,15 +78,21 @@ def _notify_alarm_board(value: int) -> None:
     except Exception:
         return
 
+
 camera = CameraManager()
-streamer = Streamer()
+streamer = Streamer(perimeter_manager)
 face_recognizer = FaceRecognizer()
 
 
-def handle_intrusion(image_path: str, recognized_people: str) -> None:
+def handle_intrusion(image_path: str, embeddings_path: str | None) -> None:
     db = database.SessionLocal()
     try:
-        crud.create_log(db, image_path=image_path, recognized_people=recognized_people)
+        crud.create_log(
+            db,
+            image_path=image_path,
+            embeddings_path=embeddings_path,
+            recognized_people="Pending",
+        )
     finally:
         db.close()
     _notify_alarm_board(1)
@@ -95,18 +103,48 @@ def update_intrusion_status(value: int) -> None:
     latest_intrusion_status["updated_at"] = datetime.utcnow().isoformat()
 
 
+def _persist_log_identity(log_id: int, recognized_people: str) -> None:
+    db = database.SessionLocal()
+    try:
+        entry = db.query(IntrusionLog).filter(IntrusionLog.id == log_id).first()
+        if entry is not None and entry.recognized_people in {"Pending", "Unknown"}:
+            entry.recognized_people = recognized_people
+            db.commit()
+    finally:
+        db.close()
+
+
+def resolve_log_identity(entry: IntrusionLog | None) -> str:
+    if entry is None:
+        return "Unknown"
+
+    if entry.recognized_people and entry.recognized_people not in {"Pending", "Unknown"}:
+        return entry.recognized_people
+
+    if entry.embeddings_path:
+        recognized_people = face_recognizer.identify_from_path(entry.embeddings_path)
+        if recognized_people not in {"Pending", "Unknown"}:
+            _persist_log_identity(entry.id, recognized_people)
+        return recognized_people
+
+    return "Unknown"
+
+
 detector = IntrusionDetector(
     face_recognizer=face_recognizer,
+    perimeter_manager=perimeter_manager,
     on_intrusion=handle_intrusion,
     on_status_change=update_intrusion_status,
 )
 streamer.set_overlay_supplier(detector.get_detection_overlays)
+streamer.set_perimeter_supplier(detector.get_perimeter_points)
 
 
 @app.on_event("startup")
 def startup_event() -> None:
     database.init_db()
     os.makedirs(config.CAPTURED_IMAGES_DIR, exist_ok=True)
+    os.makedirs(config.INTRUSION_EMBEDDINGS_DIR, exist_ok=True)
     os.makedirs(config.KNOWN_FACES_DIR, exist_ok=True)
     camera.start()
     streamer.start()
@@ -127,6 +165,7 @@ async def index(request: Request) -> HTMLResponse:
         today = datetime.now().strftime("%Y-%m-%d")
         count = db.query(IntrusionLog).filter(IntrusionLog.timestamp.like(f"{today}%")).count()
         latest = db.query(IntrusionLog).order_by(IntrusionLog.id.desc()).first()
+        latest_person = resolve_log_identity(latest) if latest else "None"
         return templates.TemplateResponse(
             request,
             "index.html",
@@ -134,7 +173,7 @@ async def index(request: Request) -> HTMLResponse:
                 "request": request,
                 "camera_status": "Online" if camera.is_running else "Offline",
                 "intrusions_today": count,
-                "latest_person": latest.recognized_people if latest else "None",
+                "latest_person": latest_person,
                 "system_status": detector.status,
             },
         )
@@ -142,9 +181,78 @@ async def index(request: Request) -> HTMLResponse:
         db.close()
 
 
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "settings.html", {"request": request})
+
+
 @app.get("/video_feed")
 async def video_feed() -> StreamingResponse:
     return streamer.response()
+
+
+@app.get("/api/settings/frame")
+async def settings_frame() -> Response:
+    frame = detector.get_current_frame()
+    if frame is None:
+        frame = camera.read_frame()
+        if frame is not None:
+            frame = cv2.flip(frame, 1)
+    if frame is None:
+        raise HTTPException(status_code=503, detail="Camera unavailable")
+    success, encoded = cv2.imencode(".jpg", frame)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to encode frame")
+    return Response(content=encoded.tobytes(), media_type="image/jpeg")
+
+
+@app.get("/api/perimeter")
+async def get_perimeter() -> JSONResponse:
+    return JSONResponse({
+        "points": [{"x": x, "y": y} for x, y in perimeter_manager.get_points()],
+        "danger_side": perimeter_manager.get_danger_side(),
+    })
+
+
+@app.post("/api/perimeter")
+async def save_perimeter(request: Request) -> JSONResponse:
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    raw_points = body.get("points", [])
+    if not isinstance(raw_points, list) or len(raw_points) < 2:
+        raise HTTPException(status_code=400, detail="Draw at least two points for the perimeter line")
+
+    points: list[tuple[float, float]] = []
+    for point in raw_points:
+        if not isinstance(point, dict) or "x" not in point or "y" not in point:
+            continue
+        x = float(point["x"])
+        y = float(point["y"])
+        if 0.0 <= x <= 1.0 and 0.0 <= y <= 1.0:
+            points.append((x, y))
+
+    if len(points) < 2:
+        raise HTTPException(status_code=400, detail="At least two valid points are required")
+
+    danger_side = body.get("danger_side", perimeter_manager.get_danger_side())
+    if danger_side not in {"left", "right"}:
+        raise HTTPException(status_code=400, detail="Invalid danger side")
+
+    perimeter_manager.save(points, danger_side=danger_side)
+    return JSONResponse({
+        "ok": True,
+        "points": [{"x": x, "y": y} for x, y in points],
+        "danger_side": danger_side,
+    })
+
+
+@app.delete("/api/perimeter")
+async def clear_perimeter() -> JSONResponse:
+    perimeter_manager.clear()
+    return JSONResponse({"ok": True})
 
 
 @app.get("/captures/{image_name}")
@@ -187,18 +295,37 @@ async def api_logs(query: str | None = None, filter: str | None = None, sort: st
     db = database.SessionLocal()
     try:
         sort_newest = sort != "oldest"
-        items = crud.list_logs(db, query=query, filter_kind=filter, sort_newest=sort_newest)
-        return JSONResponse([
-            {
+        items = crud.list_logs(db, query=query, filter_kind=None, sort_newest=sort_newest)
+
+        payload = []
+        for entry in items:
+            recognized_people = resolve_log_identity(entry)
+            payload.append({
                 "id": entry.id,
                 "timestamp": entry.timestamp,
                 "image_url": f"/captures/{Path(entry.image_path).name}",
-                "recognized_people": entry.recognized_people,
-                "person_count": len([name for name in entry.recognized_people.split(",") if name.strip()]),
+                "recognized_people": recognized_people,
+                "person_count": len([name for name in recognized_people.split(",") if name.strip()]),
                 "status": entry.status,
-            }
-            for entry in items
-        ])
+            })
+
+        if query:
+            q = query.lower()
+            payload = [
+                item for item in payload
+                if q in item["recognized_people"].lower()
+                or q in item["timestamp"].lower()
+                or q in item["status"].lower()
+            ]
+
+        if filter == "known":
+            payload = [item for item in payload if "unknown" not in item["recognized_people"].lower()]
+        elif filter == "unknown":
+            payload = [item for item in payload if "unknown" in item["recognized_people"].lower()]
+        elif filter == "multiple":
+            payload = [item for item in payload if item["person_count"] > 1]
+
+        return JSONResponse(payload)
     finally:
         db.close()
 
@@ -214,7 +341,7 @@ async def get_log(log_id: int) -> JSONResponse:
             "id": entry.id,
             "timestamp": entry.timestamp,
             "image_path": entry.image_path,
-            "recognized_people": entry.recognized_people,
+            "recognized_people": resolve_log_identity(entry),
             "status": entry.status,
         })
     finally:

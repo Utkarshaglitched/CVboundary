@@ -13,3 +13,5 @@ DATABASE_PATH: Final[str] = str(BASE_DIR / "database" / "database.db")
 KNOWN_FACES_DIR: Final[Path] = BASE_DIR / "known_faces"
 EMBEDDINGS_DIR: Final[Path] = BASE_DIR / "numpy-saves"
 CAPTURED_IMAGES_DIR: Final[Path] = BASE_DIR / "captured_intrusions"
+INTRUSION_EMBEDDINGS_DIR: Final[Path] = BASE_DIR / "intrusion_embeddings"
+PERIMETER_FILE: Final[Path] = BASE_DIR / "database" / "perimeter.json"

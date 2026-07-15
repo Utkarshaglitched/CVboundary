@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from config import DATABASE_PATH
@@ -17,6 +17,12 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 def init_db() -> None:
     Base.metadata.create_all(bind=engine)
+    inspector = inspect(engine)
+    if "intrusion_logs" in inspector.get_table_names():
+        columns = {column["name"] for column in inspector.get_columns("intrusion_logs")}
+        if "embeddings_path" not in columns:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE intrusion_logs ADD COLUMN embeddings_path VARCHAR(255)"))
 
 
 def get_db() -> Session:

@@ -2,9 +2,11 @@ async function loadLogs() {
   const query = document.getElementById('searchInput').value;
   const filter = document.getElementById('filterSelect').value;
   const sort = document.getElementById('sortSelect').value;
+  const tbody = document.getElementById('logsBody');
+  tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Identifying faces...</td></tr>';
+
   const response = await fetch(`/api/logs?query=${encodeURIComponent(query)}&filter=${encodeURIComponent(filter)}&sort=${encodeURIComponent(sort)}`);
   const logs = await response.json();
-  const tbody = document.getElementById('logsBody');
   tbody.innerHTML = '';
   logs.forEach((log) => {
     const row = document.createElement('tr');

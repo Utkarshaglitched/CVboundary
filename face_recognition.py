@@ -86,6 +86,37 @@ class FaceRecognizer:
             return best_name
         return "Unknown"
 
+    def extract_embeddings(self, image: Union[str, np.ndarray]) -> List[np.ndarray]:
+        if isinstance(image, str):
+            image = cv2.imread(image)
+        if image is None:
+            return []
+        return self._embed_image(image)
+
+    def identify_embedding(self, embedding: np.ndarray) -> str:
+        return self._recognize_embedding(embedding)
+
+    def identify_from_path(self, embeddings_path: str) -> str:
+        path = Path(embeddings_path)
+        if not path.exists():
+            return "Unknown"
+        try:
+            data = np.load(str(path), allow_pickle=False)
+        except Exception:
+            return "Unknown"
+        if data.ndim == 1:
+            embeddings = [data]
+        elif data.ndim == 2:
+            embeddings = [row for row in data]
+        else:
+            embeddings = [data.ravel()]
+        names = [self.identify_embedding(embedding) for embedding in embeddings]
+        unique_names = []
+        for name in names:
+            if name not in unique_names:
+                unique_names.append(name)
+        return ", ".join(unique_names) if unique_names else "Unknown"
+
     def recognize(self, image: Union[str, np.ndarray]) -> List[str]:
         if isinstance(image, str):
             image = cv2.imread(image)
