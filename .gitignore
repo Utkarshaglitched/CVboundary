@@ -14,7 +14,8 @@ captured_intrusions/*
 numpy-saves/*
 !numpy-saves/.gitkeep
 
-
+#random files
+PROJECT_PIPELINE.md
 # OS/editor files
 .DS_Store
 Thumbs.db
