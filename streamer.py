@@ -53,6 +53,8 @@ class Streamer:
                 time.sleep(0.02)
                 continue
 
+            frame = cv2.flip(frame, 1)
+
             if self._overlay_supplier is not None:
                 detections = self._overlay_supplier()
                 if detections:

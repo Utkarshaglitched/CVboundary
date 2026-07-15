@@ -90,7 +90,16 @@ def handle_intrusion(image_path: str, recognized_people: str) -> None:
     _notify_alarm_board(1)
 
 
-detector = IntrusionDetector(face_recognizer=face_recognizer, on_intrusion=handle_intrusion)
+def update_intrusion_status(value: int) -> None:
+    latest_intrusion_status["value"] = value
+    latest_intrusion_status["updated_at"] = datetime.utcnow().isoformat()
+
+
+detector = IntrusionDetector(
+    face_recognizer=face_recognizer,
+    on_intrusion=handle_intrusion,
+    on_status_change=update_intrusion_status,
+)
 streamer.set_overlay_supplier(detector.get_detection_overlays)
 
 
@@ -158,6 +167,14 @@ async def intrusion_status(request: Request) -> JSONResponse:
     latest_intrusion_status["value"] = value
     latest_intrusion_status["updated_at"] = datetime.utcnow().isoformat()
     return JSONResponse({"ok": True, "value": value, "message": "Intrusion status updated"})
+
+
+@app.get("/intrusion/status")
+async def get_intrusion_status() -> JSONResponse:
+    return JSONResponse({
+        "value": latest_intrusion_status["value"],
+        "updated_at": latest_intrusion_status["updated_at"],
+    })
 
 
 @app.get("/logs", response_class=HTMLResponse)

@@ -24,11 +24,17 @@ from face_recognition import FaceRecognizer
 
 
 class IntrusionDetector:
-    def __init__(self, face_recognizer: FaceRecognizer, on_intrusion: Optional[Callable[[str, str], None]] = None) -> None:
+    def __init__(
+        self,
+        face_recognizer: FaceRecognizer,
+        on_intrusion: Optional[Callable[[str, str], None]] = None,
+        on_status_change: Optional[Callable[[int], None]] = None,
+    ) -> None:
         self.model = YOLO(YOLO_MODEL_PATH)
         self.face_recognizer = face_recognizer
         self.camera = CameraManager()
         self.on_intrusion = on_intrusion
+        self.on_status_change = on_status_change
         self.last_intrusion_time = 0.0
         self._running = False
         self._capture_thread: Optional[threading.Thread] = None
@@ -144,7 +150,11 @@ class IntrusionDetector:
                     danger_detections.append((recognized_name, status_text))
 
         if intrusion_detected:
-            self.status = "INTRUSION"
+            if self.status != "INTRUSION":
+                self.status = "INTRUSION"
+                if self.on_status_change is not None:
+                    self.on_status_change(1)
+
             current_signature = tuple(sorted(danger_detections))
             now = time.time()
             should_log = False
@@ -163,6 +173,9 @@ class IntrusionDetector:
             cv2.rectangle(frame, (0, 0), (width, 70), (0, 0, 255), -1)
             cv2.putText(frame, "INTRUSION DETECTED", (20, 45), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
         else:
+            if self.status == "INTRUSION":
+                if self.on_status_change is not None:
+                    self.on_status_change(0)
             self.status = "SAFE"
             self._last_intrusion_signature = None
             cv2.rectangle(frame, (0, 0), (width, 70), (0, 150, 0), -1)
