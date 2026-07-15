@@ -11,6 +11,9 @@ MODELS/*.pt
 database/*.db
 database/*.sqlite*
 captured_intrusions/*
+numpy-saves/*
+
+
 # OS/editor files
 .DS_Store
 Thumbs.db
