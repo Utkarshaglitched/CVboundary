@@ -708,11 +708,11 @@ copies or substantial portions of the Software.
 
 ## 👨‍💻 Author
 
-**Utkarsha Boundary Surveillance**
+**Utkarsha Avinash**
 
-- 🔗 **GitHub:** [@yourgithub](https://github.com/yourgithub)
-- 💼 **LinkedIn:** [Your LinkedIn Profile](https://linkedin.com/in/yourprofile)
-- 📧 **Email:** your.email@example.com
+- 🔗 **GitHub:** [github.com/Utkarshaglitched](https://github.com/Utkarshaglitched/)
+- 💼 **LinkedIn:** [linkedin.com/in/utkarsha-avinash-98b984374](https://www.linkedin.com/in/utkarsha-avinash-98b984374)
+- 📧 **Email:** utkarshaavinash@gmail.com
 
 ---
 
