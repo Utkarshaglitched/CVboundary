@@ -39,12 +39,8 @@ CVboundary is a production-ready surveillance solution that combines real-time v
 
 ### 📷 Screenshots
 
-#### Live Dashboard
-![Dashboard](images/dashboard.png)
-*Real-time surveillance view with live video stream, system status, daily intrusion count, and navigation.*
-
 #### Intrusion Detection
-![Detection](images/detection.png)
+![Detection](images/detection.jpg)
 *YOLO detection overlay showing person bounding boxes and danger zone perimeter visualization.*
 
 #### Logs & Recognition
@@ -52,11 +48,11 @@ CVboundary is a production-ready surveillance solution that combines real-time v
 *Intrusion history with captured images, timestamps, recognized person names, and filter/search capabilities.*
 
 #### Perimeter Settings
-![Settings](images/settings.png)
+![Settings](images/settings.jpg)
 *Interactive canvas for drawing custom perimeter boundary with danger side selection.*
 
 #### Hardware Demo
-![Hardware](images/hardware.png)
+![Hardware](images/hardware.jpg)
 *Real-world deployment with detection and monitoring system.*
 
 ---
