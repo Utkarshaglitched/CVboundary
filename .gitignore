@@ -13,7 +13,7 @@ database/*.sqlite*
 captured_intrusions/*
 numpy-saves/*
 !numpy-saves/.gitkeep
-
+intrusion_embeddings/*
 #random files
 PROJECT_PIPELINE.md
 # OS/editor files

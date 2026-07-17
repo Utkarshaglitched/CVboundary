@@ -89,6 +89,7 @@ class IntrusionDetector:
         self.on_intrusion = on_intrusion
         self.on_status_change = on_status_change
         self._running = False
+        self._stop_event = threading.Event()
         self._capture_thread: Optional[threading.Thread] = None
         self._analysis_thread: Optional[threading.Thread] = None
         self._raw_frame: Optional[np.ndarray] = None
@@ -104,17 +105,22 @@ class IntrusionDetector:
         if self._running:
             return
         self._running = True
-        self._capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
-        self._analysis_thread = threading.Thread(target=self._analysis_loop, daemon=True)
+        self._stop_event.clear()
+        self._capture_thread = threading.Thread(target=self._capture_loop, name="detector-capture", daemon=True)
+        self._analysis_thread = threading.Thread(target=self._analysis_loop, name="detector-analysis", daemon=True)
         self._capture_thread.start()
         self._analysis_thread.start()
 
     def stop(self) -> None:
         self._running = False
+        self._stop_event.set()
         if self._capture_thread is not None:
             self._capture_thread.join(timeout=1.0)
+            self._capture_thread = None
         if self._analysis_thread is not None:
             self._analysis_thread.join(timeout=1.0)
+            self._analysis_thread = None
+        self.camera.stop()
 
     def get_current_frame(self) -> Optional[np.ndarray]:
         with self._raw_lock:
@@ -136,7 +142,7 @@ class IntrusionDetector:
             return self.perimeter.get_pixel_points(width, height)
 
     def _capture_loop(self) -> None:
-        while self._running:
+        while not self._stop_event.is_set():
             frame = self.camera.read_frame()
             if frame is None:
                 self.status = "CAMERA OFFLINE"
@@ -147,7 +153,7 @@ class IntrusionDetector:
             time.sleep(0.01)
 
     def _analysis_loop(self) -> None:
-        while self._running:
+        while not self._stop_event.is_set():
             frame = None
             with self._raw_lock:
                 if self._raw_frame is not None:
@@ -180,7 +186,7 @@ class IntrusionDetector:
             if self.on_intrusion is not None:
                 self.on_intrusion(str(image_path), str(embeddings_path) if embeddings_path else None)
 
-        threading.Thread(target=worker, daemon=True).start()
+        threading.Thread(target=worker, name="intrusion-worker", daemon=True).start()
 
     def _draw_perimeter(self, frame: np.ndarray) -> None:
         height, width = frame.shape[:2]

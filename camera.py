@@ -26,6 +26,7 @@ class CameraManager:
         self._frame: Optional[np.ndarray] = None
         self._lock = threading.Lock()
         self._running = False
+        self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._last_error: Optional[str] = None
 
@@ -37,12 +38,13 @@ class CameraManager:
             self._last_error = "Camera Offline"
             return False
         self._running = True
-        self._thread = threading.Thread(target=self._capture_loop, daemon=True)
+        self._stop_event.clear()
+        self._thread = threading.Thread(target=self._capture_loop, name="camera-capture", daemon=True)
         self._thread.start()
         return True
 
     def _capture_loop(self) -> None:
-        while self._running:
+        while not self._stop_event.is_set():
             if self._cap is None:
                 break
             ret, frame = self._cap.read()
@@ -63,8 +65,10 @@ class CameraManager:
 
     def stop(self) -> None:
         self._running = False
+        self._stop_event.set()
         if self._thread is not None:
             self._thread.join(timeout=1.0)
+            self._thread = None
         if self._cap is not None:
             self._cap.release()
         self._cap = None
@@ -72,7 +76,7 @@ class CameraManager:
 
     @property
     def is_running(self) -> bool:
-        return self._running
+        return self._running and not self._stop_event.is_set()
 
     @property
     def last_error(self) -> Optional[str]:
